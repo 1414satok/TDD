@@ -1,0 +1,118 @@
+```{r}
+library(tidyverse)
+library(ggthemes)
+```
+
+```{r}
+b0 <- 1
+b1 <- 1
+b2 <- 1
+b3 <- 1
+b4 <- 1
+b5 <- 1
+b6 <- 1
+b7 <- 1
+
+sigma <- 1
+```
+
+```{r}
+set.seed(14)
+
+na <- 50
+nb <- 50
+pa <- 0.5
+pb <- 0.5
+
+t <- c(rbinom(na, 1, pa), rbinom(nb, 1, pb))
+b <- c(rep(0, na), rep(1, nb))
+post <- rep(c(0,1), na+nb)
+
+eps <- rnorm((na+nb)*2, 0, sigma)
+
+df <- tibble(
+  t = rep(t, each=2),
+  b = rep(b, each=2),
+  post = post,
+  eps = eps
+) %>% 
+  mutate(
+    y = b0 + b1*t + b2*b + b3*post + b4*t*b + b5*t*post + b6*b*post + b7*t*b*post + eps
+  )
+
+df_summary <- df %>% 
+  group_by(t, b, post) %>% 
+  summarise(n=n(), y=mean(y))
+
+df_summary %>% 
+  ggplot(aes(x=post, y=y, color=factor(b), shape=factor(t))) +
+  geom_point() +
+  geom_line() +
+  labs(title = "Summary of Data", x = "Post", y = "Y") +
+  theme(legend.position = "bottom") +
+  theme_stata()
+
+ggsave("figure/summary_data.png", width = 8, height = 5)
+```
+
+```{r}
+set.seed(14)
+M <- 1000
+
+est_b7 <- replicate(M, {
+  t <- c(rbinom(na, 1, pa), rbinom(nb, 1, pb))
+  b <- c(rep(0, na), rep(1, nb))
+  post <- rep(c(0,1), na+nb)
+  
+  eps <- rnorm((na+nb)*2, 0, sigma)
+  
+  df <- tibble(
+    t = rep(t, each=2),
+    b = rep(b, each=2),
+    post = post,
+    eps = eps
+  ) %>% 
+    mutate(
+      y = b0 + b1*t + b2*b + b3*post + b4*t*b + b5*t*post + b6*b*post + b7*t*b*post + eps
+    )
+  
+  lm(y ~ t*b*post, data=df)$coef[8]
+})
+
+tibble(effect = est_b7) %>% 
+  ggplot(aes(x=effect)) +
+  geom_histogram(bins=30, fill = "white", col = "black") +
+  geom_vline(xintercept=b7, color='red') +
+  labs(title = "Estiamation of ATT", x = "ATT", y = "Frequency") +
+  theme_stata()
+
+ggsave("figure/estimation_ATT.png", width = 8, height = 5)
+```
+
+```{r}
+set.seed(14)
+
+M <- 1000
+
+est_b7 <- replicate(M, {
+  t <- rep(c(rbinom(na, 1, pa), rbinom(nb, 1, pb)), each = 9)
+  b <- rep(c(rep(0, na), rep(1, nb)), each = 9)
+  post <- rep(c(0,1), na+nb, each = 9)
+  
+  eps <- rnorm((na+nb)*2*9, 0, sigma)
+  
+  df <- tibble(
+    t = rep(t, each=2),
+    b = rep(b, each=2),
+    post = post,
+    eps = eps
+  ) %>% 
+    mutate(
+      y = b0 + b1*t + b2*b + b3*post + b4*t*b + b5*t*post + b6*b*post + b7*t*b*post + eps
+    )
+  
+  lm(y ~ t*b*post, data=df)$coef[8]
+})
+
+```
+
